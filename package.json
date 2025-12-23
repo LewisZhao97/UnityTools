@@ -1,0 +1,23 @@
+{
+  "name": "com.lewiszhao.unitytools",
+  "version": "0.1.0",
+  "displayName": "Unity Tools Collection",
+  "unity": "6000.0",
+  "documentationUrl": "https://github.com/LewisZhao97",
+  "changelogUrl": "https://github.com/LewisZhao97",
+  "dependencies": {
+    "com.unity.mathematics": "1.2.1",
+    "com.unity.burst": "1.8.4",
+    "com.unity.render-pipelines.core": "14.0.8"
+  },
+  "keywords": [
+    "ramp",
+    "texture"
+  ],
+  "author": {
+    "name": "Lewis Zhao",
+    "email": "lewisphotograph@gmail.com",
+    "url": "https://github.com/LewisZhao97"
+  },
+  "description": "This collection contains several commonly used Unity editor tools."
+}
