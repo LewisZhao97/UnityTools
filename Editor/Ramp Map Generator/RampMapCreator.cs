@@ -125,6 +125,9 @@ namespace Lewiszhao.Unitytools.Editor
         /// </summary>
         private Vector2 m_ScrollPosition;
 
+        /// <summary>
+        /// Header GUI style.
+        /// </summary>
         private GUIStyle m_Style;
 
         /// <summary>

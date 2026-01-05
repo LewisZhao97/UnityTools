@@ -4,37 +4,122 @@ using UnityEngine;
 
 namespace Lewiszhao.Unitytools.Editor
 {
+    /// <summary>
+    /// Texture channel packing tool for Unity Editor.
+    /// <para>
+    /// <see cref="TextureChannelMixer"/> allows users to combine multiple grayscale textures
+    /// into a single RGBA texture by assigning each input texture to a specific color channel.
+    /// </para>
+    /// <para>
+    /// Typical use cases include:
+    /// <list type="bullet">
+    /// <item>Packing Metallic / Occlusion / DetailMask / Smoothness maps</item>
+    /// <item>Creating optimized PBR mask textures</item>
+    /// <item>Reducing texture count for performance optimization</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The tool provides real-time preview, optional roughness inversion,
+    /// and flexible output path control.
+    /// </para>
+    /// </summary>
     public class TextureChannelMixer : EditorWindow
     {
+        /// <summary>
+        /// Shader property ID for metallic channel input. (R channel)
+        /// </summary>
         private static readonly int s_Metallic = Shader.PropertyToID("_Metallic");
+
+        /// <summary>
+        /// Shader property ID for occlusion channel input. (G channel)
+        /// </summary>
         private static readonly int s_Occlusion = Shader.PropertyToID("_Occlusion");
+
+        /// <summary>
+        /// Shader property ID for detail mask channel input. (B channel)
+        /// </summary>
         private static readonly int s_DetailMask = Shader.PropertyToID("_DetailMask");
+
+        /// <summary>
+        /// Shader property ID for smoothness channel input. (A channel)
+        /// </summary>
         private static readonly int s_Smoothness = Shader.PropertyToID("_Smoothness");
+
+        /// <summary>
+        /// Shader property ID used to toggle roughness inversion.
+        /// </summary>
         private static readonly int s_SwapRoughness = Shader.PropertyToID("_SwapRoughness");
 
+        /// <summary>
+        /// Input textures.
+        /// </summary>
         private Texture2D m_Metallic, m_Occlusion, m_DetailMask, m_Smoothness;
+
+        /// <summary>
+        /// Internal material using hidden texture mixing shader.
+        /// </summary>
         private Material m_Mat;
+
+        /// <summary>
+        /// Generated preview texture.
+        /// </summary>
         private Texture2D m_Preview;
 
+        /// <summary>
+        /// Whether to save generated texture to the same directory as input textures.
+        /// </summary>
         private bool m_UseDefaultPath = true;
+
+        /// <summary>
+        /// Custom save path selected by user.
+        /// </summary>
         private string m_CustomPath = "";
+
+        /// <summary>
+        /// If true, smoothness channel will be inverted and treated as roughness.
+        /// </summary>
         private bool m_UseRoughness;
 
+        /// <summary>
+        /// Current language selection index.
+        /// </summary>
         private int m_LanguageIndex;
+
+        /// <summary>
+        /// Supported UI language options.
+        /// </summary>
         private readonly string[] m_LanguageOptions = { "English", "中文" };
+
+        /// <summary>
+        /// Current UI language.
+        /// </summary>
         private string Language => m_LanguageOptions[m_LanguageIndex];
+
+        /// <summary>
+        /// Allows you to scroll down if the content exceeds the boundaries.
+        /// </summary>
         private Vector2 m_ScrollPosition;
+
+        /// <summary>
+        /// Header GUI style.
+        /// </summary>
         private GUIStyle m_Style;
 
+        /// <summary>
+        /// Opens the Texture Channel Mixer editor window.
+        /// </summary>
         [MenuItem("Tools/Texture Maker Tools/Texture Channel Mixer", priority = 1)]
         private static void ShowTextureMakerWindow()
         {
             var window = GetWindow<TextureChannelMixer>(false, "Texture Channel Mixer");
             window.titleContent.text = "Texture Channel Mixer";
-            window.minSize = new Vector2(600, 500);
+            window.minSize = new Vector2(600, 630);
             window.Show();
         }
 
+        /// <summary>
+        /// Initializes internal material using hidden mixing shader.
+        /// </summary>
         private void OnEnable()
         {
             if (m_Mat != null) return;
@@ -52,6 +137,10 @@ namespace Lewiszhao.Unitytools.Editor
             }
         }
 
+        /// <summary>
+        /// Draws the main editor GUI.
+        /// Handles input texture assignment, preview, and texture generation.
+        /// </summary>
         private void OnGUI()
         {
             m_ScrollPosition = EditorGUILayout.BeginScrollView(m_ScrollPosition);
@@ -82,6 +171,9 @@ namespace Lewiszhao.Unitytools.Editor
             EditorGUILayout.EndScrollView();
         }
 
+        /// <summary>
+        /// Create a general header GUIStyle.
+        /// </summary>
         private GUIStyle Style
         {
             get
@@ -104,6 +196,9 @@ namespace Lewiszhao.Unitytools.Editor
 
         #region Input Settings
 
+        /// <summary>
+        /// Draws input texture assignment and output options.
+        /// </summary>
         private void GetInput()
         {
             EditorGUILayout.Space(10);
@@ -176,17 +271,17 @@ namespace Lewiszhao.Unitytools.Editor
             EditorGUILayout.Space(10);
         }
 
-        private static Texture2D DrawTextureChannel(string label, Texture2D current)
-        {
-            EditorGUI.BeginChangeCheck();
-            var newTex = TextureField(label, current);
-            return EditorGUI.EndChangeCheck() ? newTex : current;
-        }
-
-        private static Texture2D TextureField(string label, Texture2D texture)
+        /// <summary>
+        /// Draws a texture input field for a specific color channel.
+        /// </summary>
+        /// <param name="label">Channel label.</param>
+        /// <param name="texture">Current texture.</param>
+        /// <returns>Updated texture reference.</returns>
+        private static Texture2D DrawTextureChannel(string label, Texture2D texture)
         {
             EditorGUILayout.BeginVertical();
             GUILayout.Label(label, EditorStyles.miniBoldLabel);
+
             var result = EditorGUILayout.ObjectField(
                 texture,
                 typeof(Texture2D),
@@ -194,6 +289,7 @@ namespace Lewiszhao.Unitytools.Editor
                 GUILayout.Width(80),
                 GUILayout.Height(80)
             ) as Texture2D;
+
             EditorGUILayout.EndVertical();
             return result;
         }
@@ -202,6 +298,9 @@ namespace Lewiszhao.Unitytools.Editor
 
         #region Preview and Generate
 
+        /// <summary>
+        /// Draws preview area and refresh button.
+        /// </summary>
         private void PreviewOutput()
         {
             EditorGUILayout.Space(5);
@@ -238,6 +337,9 @@ namespace Lewiszhao.Unitytools.Editor
             EditorGUILayout.Space(10);
         }
 
+        /// <summary>
+        /// Handles final texture generation and saving.
+        /// </summary>
         private void GenerateTextureButton()
         {
             if (!GUILayout.Button(GetLocalizedText("Generate Texture"), GUILayout.Height(30))) return;
@@ -259,6 +361,10 @@ namespace Lewiszhao.Unitytools.Editor
             EditorUtility.DisplayDialog("Success", GetLocalizedText("Texture Saved"), "OK");
         }
 
+        /// <summary>
+        /// Generates combined mask texture using GPU blit.
+        /// </summary>
+        /// <returns>Generated RGBA texture.</returns>
         private Texture2D GenerateMaskTexture()
         {
             if (!m_Metallic && !m_Occlusion && !m_DetailMask && !m_Smoothness)
@@ -315,6 +421,18 @@ namespace Lewiszhao.Unitytools.Editor
             return output;
         }
 
+        /// <summary>
+        /// Saves a texture as a PNG file and imports it into Unity.
+        /// </summary>
+        /// <param name="texture">
+        /// Texture to be saved.
+        /// </param>
+        /// <param name="directory">
+        /// Target directory path.
+        /// </param>
+        /// <param name="fileName">
+        /// Output file name including extension.
+        /// </param>
         private static void SaveTexture(Texture2D texture, string directory, string fileName)
         {
             var textureBytes = texture.EncodeToPNG();
@@ -324,6 +442,10 @@ namespace Lewiszhao.Unitytools.Editor
             Debug.Log("Saved: " + filePath);
         }
 
+        /// <summary>
+        /// Resolves output save directory based on current settings.
+        /// </summary>
+        /// <returns>Directory path.</returns>
         private string GetSavePath()
         {
             var firstTex = m_Metallic ?? m_Occlusion ?? m_DetailMask ?? m_Smoothness;
@@ -338,6 +460,11 @@ namespace Lewiszhao.Unitytools.Editor
 
         #region Localization
 
+        /// <summary>
+        /// Returns localized UI text based on current language selection.
+        /// </summary>
+        /// <param name="key">Original English key.</param>
+        /// <returns>Localized string.</returns>
         private string GetLocalizedText(string key)
         {
             if (Language == "中文")
@@ -347,7 +474,7 @@ namespace Lewiszhao.Unitytools.Editor
                     "Input Textures" => "输入纹理",
                     "Metallic" => "金属度",
                     "Occlusion" => "环境遮蔽",
-                    "Detail Mask" => "细节蒙版",
+                    "Detail Mask" => "细节遮罩",
                     "Smoothness" => "光滑度",
                     "Language" => "语言",
                     "Use Default Path" => "使用默认路径",
@@ -370,6 +497,9 @@ namespace Lewiszhao.Unitytools.Editor
 
         #endregion
 
+        /// <summary>
+        /// Cleans up temporary resources when window is destroyed.
+        /// </summary>
         private void OnDestroy()
         {
             if (m_Mat != null) DestroyImmediate(m_Mat);
