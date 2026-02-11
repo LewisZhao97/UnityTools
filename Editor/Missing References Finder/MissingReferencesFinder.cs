@@ -12,6 +12,7 @@ namespace Lewiszhao.Unitytools.Editor
             public GameObject GameObject;
             public string ComponentName;
             public string PropertyName;
+            public string PropertyLabel;
             public string Path;
             public string ErrorType;
         }
@@ -19,54 +20,118 @@ namespace Lewiszhao.Unitytools.Editor
         private readonly List<BrokenReference> m_BrokenReferences = new();
         private Vector2 m_ScrollPosition;
 
-        [MenuItem("Tools/Find Missing References")]
+        /// <summary>
+        /// Current UI language index.
+        /// </summary>
+        private int m_LanguageIndex;
+
+        /// <summary>
+        /// Supported UI language options.
+        /// </summary>
+        private readonly string[] m_LanguageOptions = { "English", "中文" };
+
+        /// <summary>
+        /// Current UI language.
+        /// </summary>
+        private string Language => m_LanguageOptions[m_LanguageIndex];
+
+        /// <summary>
+        /// Header GUI style.
+        /// </summary>
+        private GUIStyle m_Style;
+
+        [MenuItem("Tools/Find Missing References", priority = 3)]
         public static void ShowWindow()
         {
-            GetWindow<MissingReferencesFinder>("Missing References");
+            var window = GetWindow<MissingReferencesFinder>(false, "Missing References Finder");
+            window.titleContent.text = "Missing References Finder";
+            window.minSize = new Vector2(450, 241);
+            window.maxSize = new Vector2(550, 450);
+            window.Show();
         }
 
         private void OnGUI()
         {
-            GUILayout.Space(10);
-            GUILayout.Label("扫描当前场景中的丢失引用", EditorStyles.boldLabel);
-            GUILayout.Label("包括：Missing Scripts 和 属性中的 Missing", EditorStyles.miniLabel);
-
-            GUILayout.Space(10);
-
-            if (GUILayout.Button("开始扫描", GUILayout.Height(30)))
+            using (new EditorGUILayout.VerticalScope("box"))
             {
-                ScanScene();
-            }
+                GUILayout.BeginHorizontal();
+                GUILayout.BeginVertical();
+                GUILayout.Label(GetLocalizedText("Scanner"), Style);
+                GUILayout.Label(GetLocalizedText("This includes: Missing Scripts and the Missing attribute"), EditorStyles.miniLabel);
+                GUILayout.EndVertical();
+                GUILayout.FlexibleSpace();
+                EditorGUILayout.LabelField(GetLocalizedText("Language"), GUILayout.Width(70));
+                m_LanguageIndex = EditorGUILayout.Popup(m_LanguageIndex, m_LanguageOptions, GUILayout.Width(70));
+                GUILayout.EndHorizontal();
 
-            GUILayout.Space(10);
+                GUILayout.Space(10);
 
-            if (m_BrokenReferences.Count > 0)
-            {
-                GUILayout.Label($"找到 {m_BrokenReferences.Count} 个丢失项:", EditorStyles.boldLabel);
-
-                m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition);
-
-                foreach (var refer in m_BrokenReferences)
+                if (GUILayout.Button(GetLocalizedText("Scan in current scene"), GUILayout.Height(30)))
                 {
-                    DrawResultItem(refer);
+                    ScanScene();
                 }
 
-                GUILayout.EndScrollView();
+                GUILayout.Space(10);
+
+                if (m_BrokenReferences.Count > 0)
+                {
+                    GUILayout.Label(GetLocalizedText("Scan complete: Finding ") + m_BrokenReferences.Count + GetLocalizedText(" missing reference(s):"), EditorStyles.boldLabel);
+                    GUILayout.Label(GetLocalizedText("Please find the corresponding resource based on the variable name."), EditorStyles.helpBox);
+
+                    m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition);
+
+                    foreach (var refer in m_BrokenReferences)
+                    {
+                        DrawResultItem(refer);
+                    }
+
+                    GUILayout.EndScrollView();
+                }
+                else
+                {
+                    GUILayout.Label(GetLocalizedText("The list is empty (please click to scan)"), EditorStyles.centeredGreyMiniLabel);
+                }
             }
-            else
+        }
+        
+        /// <summary>
+        /// Create a general header GUIStyle.
+        /// </summary>
+        private GUIStyle Style
+        {
+            get
             {
-                GUILayout.Label("列表为空 (请点击扫描)", EditorStyles.centeredGreyMiniLabel);
+                if (m_Style != null) return m_Style;
+                m_Style = new GUIStyle(EditorStyles.boldLabel)
+                {
+                    fontSize = 14,
+                    normal =
+                    {
+                        textColor = EditorGUIUtility.isProSkin
+                            ? new Color(0.85f, 0.85f, 0.85f)
+                            : Color.black
+                    }
+                };
+
+                return m_Style;
             }
         }
 
-        private static void DrawResultItem(BrokenReference refer)
+        private void DrawResultItem(BrokenReference refer)
         {
             EditorGUILayout.BeginVertical("box");
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label(new GUIContent(EditorGUIUtility.IconContent("GameObject Icon")), GUILayout.Width(20),
-                GUILayout.Height(20));
-            if (GUILayout.Button($"{refer.GameObject.name}", EditorStyles.boldLabel))
+            var icon = EditorGUIUtility.IconContent("GameObject Icon").image;
+            var content = new GUIContent(refer.GameObject.name, icon);
+            var leftBoldLabel = new GUIStyle(EditorStyles.boldLabel)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                imagePosition = ImagePosition.ImageLeft,
+                fixedHeight = 20
+            };
+
+            if (GUILayout.Button(content, leftBoldLabel))
             {
                 Selection.activeGameObject = refer.GameObject;
                 EditorGUIUtility.PingObject(refer.GameObject);
@@ -74,7 +139,7 @@ namespace Lewiszhao.Unitytools.Editor
 
             GUILayout.EndHorizontal();
 
-            GUILayout.Label($"Path: {refer.Path}", EditorStyles.miniLabel);
+            GUILayout.Label(GetLocalizedText("Path: ") + refer.Path, EditorStyles.miniLabel);
 
             var errorStyle = new GUIStyle(EditorStyles.label)
             {
@@ -86,12 +151,20 @@ namespace Lewiszhao.Unitytools.Editor
 
             if (refer.ErrorType == "Missing Script")
             {
-                GUILayout.Label($"⚠ Error: 挂载的脚本文件丢失 (Missing Script)", errorStyle);
+                GUILayout.Label(GetLocalizedText("⚠ Error: Script file missing"), errorStyle);
             }
             else
             {
-                GUILayout.Label($"⚠ Component: [{refer.ComponentName}]", EditorStyles.label);
-                GUILayout.Label($"⚠ Property: [{refer.PropertyName}] 指向了丢失的资源", errorStyle);
+                GUILayout.Label(GetLocalizedText("⚠ Component: ") + refer.ComponentName, EditorStyles.label);
+                var style = new GUIStyle(EditorStyles.label)
+                {
+                    normal =
+                    {
+                        textColor = Color.yellow
+                    }
+                };
+                GUILayout.Label(GetLocalizedText("⚠ Name (Inspector): ") + refer.PropertyLabel, style); 
+                GUILayout.Label(GetLocalizedText("⚠ Property: ") + refer.PropertyName + GetLocalizedText(" has a missing reference"), errorStyle);
             }
 
             EditorGUILayout.EndVertical();
@@ -109,7 +182,7 @@ namespace Lewiszhao.Unitytools.Editor
                 CheckGameObjectRecursive(g);
             }
 
-            Debug.Log($"扫描完成，找到 {m_BrokenReferences.Count} 个丢失引用。");
+            Debug.Log(GetLocalizedText("Scan complete: Finding ") + m_BrokenReferences.Count + GetLocalizedText(" missing reference(s)"));
         }
 
         private void CheckGameObjectRecursive(GameObject go)
@@ -136,6 +209,7 @@ namespace Lewiszhao.Unitytools.Editor
                         GameObject = go,
                         ComponentName = "Missing Script",
                         PropertyName = "N/A",
+                        PropertyLabel = "N/A",
                         Path = GetFullPath(go),
                         ErrorType = "Missing Script"
                     });
@@ -163,7 +237,8 @@ namespace Lewiszhao.Unitytools.Editor
                         {
                             GameObject = go,
                             ComponentName = c.GetType().Name,
-                            PropertyName = sp.displayName + " (" + sp.name + ")",
+                            PropertyName = sp.name,
+                            PropertyLabel = sp.displayName,
                             Path = GetFullPath(go),
                             ErrorType = "Missing Reference"
                         });
@@ -183,5 +258,42 @@ namespace Lewiszhao.Unitytools.Editor
 
             return path;
         }
+
+        #region Localization
+
+        /// <summary>
+        /// Returns localized UI text based on current language selection.
+        /// </summary>
+        /// <param name="key">Original English key.</param>
+        /// <returns>Localized string.</returns>
+        private string GetLocalizedText(string key)
+        {
+            if (Language == "中文")
+            {
+                return key switch
+                {
+                    "Language" => "语言",
+                    "Path: " => "路径： ",
+                    "This includes: Missing Scripts and the Missing attribute" => "包括：Missing Scripts 和 属性中的 Missing",
+                    "Scanner" => "引用扫描器",
+                    "Scan in current scene" => "开始扫描当前场景",
+                    "The list is empty (please click to scan)" => "列表为空(请点击扫描)",
+                    "Scan complete: Finding " => "扫描完成，找到 ",
+                    " missing reference(s)" => " 个丢失引用。",
+                    " missing reference(s):" => " 个丢失项：",
+                    "⚠ Error: Script file missing" => "⚠ 错误: 挂载的脚本文件丢失",
+                    "⚠ Component: " => "⚠ 组件： ",
+                    "⚠ Name (Inspector): " => "⚠ 名称 (检查器)： ",
+                    "⚠ Property: " => "⚠ 属性： ",
+                    " has a missing reference" => "指向了丢失的资源",
+                    "Please find the corresponding resource based on the variable name." => "请根据变量名称查找对应资源。",
+                    _ => key
+                };
+            }
+
+            return key;
+        }
+
+        #endregion
     }
 }
