@@ -108,11 +108,10 @@ namespace Lewiszhao.Unitytools.Editor
                             GUILayout.Height(30),
                             GUILayout.Width(150)))
                     {
-                        m_CustomPath = EditorUtility.SaveFilePanel(
+                        m_CustomPath = EditorUtility.SaveFolderPanel(
                             GetLocalizedText("Select Save Path"),
                             Application.dataPath,
-                            "Texture.png",
-                            "png");
+                            "");
 
                         if (!string.IsNullOrEmpty(m_CustomPath))
                         {
