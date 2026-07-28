@@ -1,10 +1,13 @@
 using UnityEngine;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 
 namespace Lewiszhao.Unitytools.Runtime
 {
     public class BoneGizmoDrawer : MonoBehaviour
     {
+#if UNITY_EDITOR
         [SerializeField] private bool m_ShowBones = true;
         [SerializeField] private Color m_GizmoColor = Color.yellow;
         [SerializeField] private float m_GizmoSize = 0.02f;
@@ -27,5 +30,6 @@ namespace Lewiszhao.Unitytools.Runtime
                 DrawBonesRecursive(child);
             }
         }
+#endif
     }
 }
